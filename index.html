@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音のデジタル化 体験シミュレーター</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .canvas-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        canvas {
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            max-width: 100%;
+        }
+        .control-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #34495e;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        .value-display {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        .btn-container {
+            text-align: center;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button.playing {
+            background-color: #e74c3c;
+        }
+        .explanation {
+            margin-top: 30px;
+            font-size: 0.95em;
+            line-height: 1.6;
+            border-top: 2px solid #eee;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>音のデジタル化 体験シミュレーター</h1>
+
+    <div class="canvas-container">
+        <canvas id="waveCanvas" width="700" height="300"></canvas>
+    </div>
+
+    <div class="control-panel">
+        <div class="control-group">
+            <label for="samplingSlider">① 標本化（サンプリング周波数）</label>
+            <input type="range" id="samplingSlider" min="4" max="100" value="20" step="1">
+            <div class="value-display">1周期あたりのサンプリング回数: <span id="samplingVal">20</span> 回</div>
+        </div>
+
+        <div class="control-group">
+            <label for="quantizationSlider">② 量子化ビット数（段階の細かさ）</label>
+            <input type="range" id="quantizationSlider" min="1" max="6" value="3" step="1">
+            <div class="value-display">量子化：<span id="quantizationBit">3</span> bit （<span id="quantizationVal">8</span> 段階）</div>
+        </div>
+    </div>
+
+    <div class="btn-container">
+        <button id="playBtn">音を再生する</button>
+    </div>
+
+    <div class="explanation">
+        <h3>💡 実習のポイント</h3>
+        <ul>
+            <li><strong>元の波形（青い線）：</strong> アナログの音です。なめらかな変化をしています。</li>
+            <li><strong>デジタル化された波形（赤い階段状の線）：</strong> サンプリングと量子化を行った後のデータです。</li>
+            <li>スライダーを左に動かして「粗いデジタルデータ」にしたとき、音がどのように変化するか（雑音が増えるか）を耳で確かめてみましょう。</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('waveCanvas');
+    const ctx = canvas.getContext('2d');
+    const samplingSlider = document.getElementById('samplingSlider');
+    const quantizationSlider = document.getElementById('quantizationSlider');
+    const samplingVal = document.getElementById('samplingVal');
+    const quantizationBit = document.getElementById('quantizationBit');
+    const quantizationVal = document.getElementById('quantizationVal');
+    const playBtn = document.getElementById('playBtn');
+
+    let audioCtx = null;
+    let oscillator = null;
+    let scriptProcessor = null;
+    let isPlaying = false;
+
+    // 描画関数
+    function draw() {
+        const width = canvas.width;
+        const height = canvas.height;
+        const centerY = height / 2;
+        const amplitude = height * 0.4; // 波の振幅
+
+        ctx.clearRect(0, 0, width, height);
+
+        // 背景のグリッド線
+        ctx.strokeStyle = '#f0f0f0';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < width; i += 50) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke();
+        }
+        ctx.beginPath(); ctx.moveTo(0, centerY); ctx.lineTo(width, centerY); ctx.stroke();
+
+        // パラメータ取得
+        const sCount = parseInt(samplingSlider.value);
+        const qBit = parseInt(quantizationSlider.value);
+        const qLevels = Math.pow(2, qBit);
+
+        samplingVal.innerText = sCount;
+        quantizationBit.innerText = qBit;
+        quantizationVal.innerText = qLevels;
+
+        // 1. 元のアナログ波形（サイン波）の描画（青色）
+        ctx.strokeStyle = '#3498db';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let x = 0; x < width; x++) {
+            // 2周期分の波を描画
+            const angle = (x / width) * Math.PI * 2 * 2;
+            const y = centerY + Math.sin(angle) * amplitude;
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // 2. デジタル化された波形の描画（赤色・階段状）
+        ctx.strokeStyle = '#e74c3c';
+        ctx.lineWidth = 2;
+        ctx.fillStyle = '#e74c3c';
+        
+        const stepX = width / sCount; // サンプリングの間隔
+
+        ctx.beginPath();
+        let lastY = centerY;
+
+        for (let i = 0; i <= sCount; i++) {
+            const x = i * stepX;
+            const angle = (x / width) * Math.PI * 2 * 2;
+            const analogY = Math.sin(angle); // -1.0 ～ 1.0
+
+            // 量子化の計算（値を段階に区切る）
+            // アナログ値を 0～1 の範囲に変換し、段階数で四捨五入して、元の範囲に戻す
+            const quantizedNormalized = Math.round((analogY + 1) / 2 * (qLevels - 1)) / (qLevels - 1);
+            const digitalY = centerY + (quantizedNormalized * 2 - 1) * amplitude;
+
+            if (i === 0) {
+                ctx.moveTo(x, digitalY);
+            } else {
+                // 階段状にするため、直前のY座標のまま現在のX座標まで線を引いてから、新しいY座標へ引く
+                ctx.lineTo(x, lastY);
+                ctx.lineTo(x, digitalY);
+            }
+            
+            // サンプリングポイントに点を打つ
+            if(i < sCount) {
+                ctx.beginPath();
+                ctx.arc(x, digitalY, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(x, digitalY);
+            }
+
+            lastY = digitalY;
+        }
+        ctx.stroke();
+    }
+
+    // スライダー変更イベント
+    samplingSlider.addEventListener('input', draw);
+    quantizationSlider.addEventListener('input', draw);
+
+    // 音声生成と再生処理
+    function toggleAudio() {
+        if (isPlaying) {
+            // 停止処理
+            if (oscillator) { oscillator.stop(); oscillator.disconnect(); }
+            if (scriptProcessor) { scriptProcessor.disconnect(); }
+            if (audioCtx) { audioCtx.close(); audioCtx = null; }
+            playBtn.innerText = "音を再生する";
+            playBtn.classList.remove('playing');
+            isPlaying = false;
+        } else {
+            // 再生処理
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const bufferSize = 4096;
+            
+            // リアルタイムで波形を加工するためのプロセッサ
+            scriptProcessor = audioCtx.createScriptProcessor(bufferSize, 0, 1);
+            
+            let phase = 0;
+            const baseFreq = 220; // 基本となる音の高さ（Aの音）
+
+            scriptProcessor.onaudioprocess = function(e) {
+                const outputBuffer = e.outputBuffer.getChannelData(0);
+                const sCount = parseInt(samplingSlider.value);
+                const qBit = parseInt(quantizationSlider.value);
+                const qLevels = Math.pow(2, qBit);
+                
+                // シミュレーション用のサンプリングレート
+                // 1周期あたり sCount 回のサンプルになるように調整
+                const targetSampleRate = baseFreq * sCount; 
+
+                for (let i = 0; i < bufferSize; i++) {
+                    // 本来のアナログ波形（サイン波）
+                    const analogValue = Math.sin(phase);
+                    
+                    // サンプリング（擬似的にサンプリング周波数を落とす処理）
+                    const stepSrc = audioCtx.sampleRate / targetSampleRate;
+                    const sampleIndex = Math.floor(i / stepSrc);
+                    
+                    // 量子化処理
+                    const quantizedValue = Math.round((analogValue + 1) / 2 * (qLevels - 1)) / (qLevels - 1) * 2 - 1;
+
+                    outputBuffer[i] = quantizedValue;
+                    
+                    // 位相を進める
+                    phase += (2 * Math.PI * baseFreq) / audioCtx.sampleRate;
+                    if (phase > 2 * Math.PI) phase -= 2 * Math.PI;
+                }
+            };
+
+            scriptProcessor.connect(audioCtx.destination);
+            
+            playBtn.innerText = "音を停止する";
+            playBtn.classList.add('playing');
+            isPlaying = true;
+        }
+    }
+
+    playBtn.addEventListener('click', toggleAudio);
+
+    // 初期描画
+    draw();
+</script>
+
+</body>
+</html>
