@@ -3,450 +3,364 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOUND DIGITALIZER | 音のデジタル化ラボ</title>
+    <title>音のデジタル化（A/D変換）学習シミュレーター</title>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --panel-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-sub: #94a3b8;
-            --accent-analog: #38bdf8;
-            --accent-digital: #f43f5e;
-            --accent-green: #10b981;
+            --bg-slate: #0f172a;
+            --panel-slate: #1e293b;
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+            --blue-analog: #0ea5e9;
+            --pink-digital: #f43f5e;
+            --green-code: #10b981;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-slate);
+            color: var(--text-light);
             margin: 0;
             padding: 20px;
-            display: flex;
-            justify-content: center;
         }
 
         .container {
-            width: 100%;
-            max-width: 900px;
-            background: var(--panel-bg);
-            padding: 30px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--panel-slate);
+            padding: 25px;
             border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
         h1 {
             text-align: center;
-            font-size: 2rem;
-            font-weight: 800;
-            letter-spacing: 2px;
-            margin-bottom: 5px;
-            background: linear-gradient(to right, var(--accent-analog), var(--accent-digital));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
         }
 
-        .subtitle {
-            text-align: center;
-            color: var(--text-sub);
-            font-size: 0.9rem;
-            margin-bottom: 25px;
-        }
-
+        /* グラフエリア */
         .canvas-container {
-            position: relative;
-            margin-bottom: 25px;
+            background: #020617;
             border-radius: 12px;
             overflow: hidden;
             border: 1px solid #334155;
+            margin-bottom: 20px;
         }
-
         canvas {
-            background: #020617;
             display: block;
             width: 100%;
             height: auto;
         }
 
-        .grid-layout {
+        /* 手順に沿ったコントロール */
+        .step-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 15px;
             margin-bottom: 25px;
         }
 
-        @media (max-width: 768px) {
-            .grid-layout { grid-template-columns: 1fr; }
+        @media (max-width: 600px) {
+            .step-container { grid-template-columns: 1fr; }
         }
 
-        .control-panel, .info-panel {
+        .step-box {
             background: #111827;
-            padding: 20px;
-            border-radius: 12px;
+            padding: 15px;
+            border-radius: 10px;
             border: 1px solid #334155;
         }
 
-        .panel-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-top: 0;
-            margin-bottom: 15px;
-            border-left: 4px solid var(--accent-analog);
-            padding-left: 10px;
+        .step-num {
+            display: inline-block;
+            font-size: 0.8rem;
+            font-weight: bold;
+            background: #334155;
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-bottom: 8px;
         }
 
-        .control-group {
-            margin-bottom: 20px;
-        }
-
-        label {
+        .step-title {
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 0.95rem;
         }
 
-        .label-val { color: var(--accent-analog); font-family: monospace; }
-        .label-val.digital { color: var(--accent-digital); }
+        .highlight-blue { color: var(--blue-analog); }
+        .highlight-pink { color: var(--pink-digital); }
 
         input[type="range"] {
             width: 100%;
-            height: 6px;
-            background: #334155;
-            border-radius: 5px;
-            outline: none;
-            -webkit-appearance: none;
+            margin-top: 5px;
         }
 
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--text-main);
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
-
-        .select-style {
-            width: 100%;
-            padding: 10px;
-            background: #334155;
-            color: var(--text-main);
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            outline: none;
-        }
-
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #1e293b;
-            font-size: 0.95rem;
-        }
-        .status-item:last-child { border-bottom: none; }
-        .status-label { color: var(--text-sub); }
-        .status-val { font-family: monospace; font-weight: 700; }
-
-        .binary-box {
+        .code-display {
             background: #020617;
             padding: 10px;
             border-radius: 6px;
             font-family: monospace;
-            color: var(--accent-green);
+            color: var(--green-code);
+            font-size: 0.9rem;
+            min-height: 24px;
             word-break: break-all;
-            margin-top: 5px;
-            font-size: 0.85rem;
-            max-height: 50px;
-            overflow-y: auto;
         }
 
-        .btn-container {
+        /* 🌟 データ量計算（一番目立つ場所） */
+        .result-box {
+            background: linear-gradient(135deg, #1e3a8a, #0f172a);
+            border: 2px solid #2563eb;
+            padding: 20px;
+            border-radius: 12px;
             text-align: center;
+            margin-bottom: 25px;
         }
 
-        button {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        .result-title {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #60a5fa;
+            font-family: monospace;
+        }
+
+        .result-formula {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        /* 再生ボタン */
+        .btn-play {
+            display: block;
+            width: 100%;
+            background: #2563eb;
             color: white;
             border: none;
-            padding: 14px 40px;
+            padding: 15px;
             font-size: 1.1rem;
-            font-weight: 700;
-            border-radius: 30px;
+            font-weight: bold;
+            border-radius: 8px;
             cursor: pointer;
-            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
-            transition: all 0.2s;
-            width: 100%;
-            max-width: 300px;
+            transition: background 0.2s;
         }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
-        }
-
-        button.playing {
-            background: linear-gradient(135deg, #dc2626, #b91c1c);
-            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);
-        }
-
-        .legend {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 15px;
-            font-size: 0.85rem;
-        }
-        .legend-item { display: flex; align-items: center; gap: 5px; }
-        .dot { width: 12px; height: 12px; border-radius: 3px; }
+        .btn-play:hover { background: #1d4ed8; }
+        .btn-play.playing { background: #dc2626; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>SOUND DIGITALIZER</h1>
-    <div class="subtitle">情報Ⅰ：音のデジタル表現（標本化・量子化・符号化）シミュレーター</div>
+    <h1>デジタル化（A/D変換）シミュレーター</h1>
 
     <div class="canvas-container">
-        <canvas id="waveCanvas" width="850" height="320"></canvas>
+        <canvas id="mainCanvas" width="800" height="280"></canvas>
     </div>
 
-    <div class="legend">
-        <div class="legend-item"><div class="dot" style="background: var(--accent-analog)"></div> アナログ波形</div>
-        <div class="legend-item"><div class="dot" style="background: var(--accent-digital)"></div> デジタル波形（パルスコード化）</div>
-    </div>
-
-    <div class="grid-layout">
-        <div class="control-panel">
-            <div class="panel-title">1. 各種パラメータの設定</div>
-            
-            <div class="control-group">
-                <label>音色の種類 <span class="text-sub">※サイン波以外がおすすめ！</span></label>
-                <select id="waveType" class="select-style">
-                    <option value="sine">サイン波（シンプルな電子音）</option>
-                    <option value="square" selected>矩形波（ゲーム機風のピコピコ音：変化が大）</option>
-                    <option value="sawtooth">のこぎり波（激しいベース音：変化特大）</option>
-                </select>
-            </div>
-
-            <div class="control-group">
-                <label>① 標本化（サンプリング周波数） <span id="samplingVal" class="label-val">30</span></label>
-                <input type="range" id="samplingSlider" min="6" max="120" value="30" step="1">
-            </div>
-
-            <div class="control-group">
-                <label>② 量子化ビット数 <span id="quantizationBit" class="label-val digital">4 bit</span></label>
-                <input type="range" id="quantizationSlider" min="1" max="8" value="4" step="1">
-            </div>
+    <div class="step-container">
+        <div class="step-box">
+            <div class="step-num">STEP 1</div>
+            <div class="step-title">① 標本化 <span id="valSampling" class="highlight-blue">40 Hz</span></div>
+            <p style="margin:0 0 10px 0; font-size:0.85rem; color:var(--text-muted);">1秒間に音を区切る回数（サンプリング周波数）</p>
+            <input type="range" id="sliderSampling" min="10" max="100" value="40" step="5">
         </div>
 
-        <div class="info-panel">
-            <div class="panel-title">2. デジタル変換ステータス</div>
-            
-            <div class="status-item">
-                <span class="status-label">標本化（1周期あたりのサンプル数）</span>
-                <span class="status-val" id="statusSamples">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">量子化の段階数（2の累乗）</span>
-                <span class="status-val" id="statusLevels">-</span>
-            </div>
-            <div class="status-item" style="flex-direction: column; align-items: flex-start; gap: 5px;">
-                <span class="status-label">③ 符号化（直近のサンプル点の2進数データ）</span>
-                <div class="binary-box" id="binaryDisplay">0101 1100 ...</div>
-            </div>
+        <div class="step-box">
+            <div class="step-num">STEP 2</div>
+            <div class="step-title">② 量子化 <span id="valQuantization" class="highlight-pink">3 bit</span></div>
+            <p style="margin:0 0 10px 0; font-size:0.85rem; color:var(--text-muted);">音の強弱を表現する細かさ（<span id="valLevels">8</span>段階）</p>
+            <input type="range" id="sliderQuantization" min="1" max="6" value="3" step="1">
         </div>
     </div>
 
-    <div class="btn-container">
-        <button id="playBtn">音を再生する</button>
+    <div class="step-box" style="margin-bottom: 20px;">
+        <div class="step-num">STEP 3</div>
+        <div class="step-title" style="color: var(--green-code);">③ 符号化（デジタル信号への変換）</div>
+        <p style="margin:0 0 10px 0; font-size:0.85rem; color:var(--text-muted);">区切った各点の高さを「0」と「1」の2進数で記録します（最初の10点分を表示）</p>
+        <div class="code-display" id="binaryOutput">000 100 ...</div>
     </div>
+
+    <div class="result-box">
+        <div class="result-title">💾 1秒間あたりのデータ量（ファイルサイズ）</div>
+        <div class="result-value" id="calcResult">000 bit</div>
+        <div class="result-formula" id="calcFormula">サンプリング周波数 × 量子化ビット数</div>
+    </div>
+
+    <button id="btnPlay" class="btn-play">実際の音を聴いてみる</button>
 </div>
 
 <script>
-    const canvas = document.getElementById('waveCanvas');
+    const canvas = document.getElementById('mainCanvas');
     const ctx = canvas.getContext('2d');
-    const samplingSlider = document.getElementById('samplingSlider');
-    const quantizationSlider = document.getElementById('quantizationSlider');
-    const waveTypeSelect = document.getElementById('waveType');
+    const sliderSampling = document.getElementById('sliderSampling');
+    const sliderQuantization = document.getElementById('sliderQuantization');
     
-    const samplingVal = document.getElementById('samplingVal');
-    const quantizationBit = document.getElementById('quantizationBit');
-    const statusSamples = document.getElementById('statusSamples');
-    const statusLevels = document.getElementById('statusLevels');
-    const binaryDisplay = document.getElementById('binaryDisplay');
-    const playBtn = document.getElementById('playBtn');
+    const valSampling = document.getElementById('valSampling');
+    const valQuantization = document.getElementById('valQuantization');
+    const valLevels = document.getElementById('valLevels');
+    const binaryOutput = document.getElementById('binaryOutput');
+    const calcResult = document.getElementById('calcResult');
+    const calcFormula = document.getElementById('calcFormula');
+    const btnPlay = document.getElementById('btnPlay');
 
     let audioCtx = null;
     let scriptProcessor = null;
     let isPlaying = false;
 
-    // 数値を指定桁数の2進数文字列に変換する関数（符号化のシミュレート用）
-    function toBinary(value, bits) {
-        let bin = value.toString(2);
+    // 10進数を2進数の文字列に（桁数を揃える）
+    function numToBin(num, bits) {
+        let bin = num.toString(2);
         while (bin.length < bits) { bin = "0" + bin; }
         return bin;
     }
 
-    // 擬似的な音色波形を計算する関数（描画用）
-    function getWaveValue(angle, type) {
-        if (type === 'sine') return Math.sin(angle);
-        if (type === 'square') return Math.sin(angle) >= 0 ? 0.6 : -0.6; // 矩形波
-        if (type === 'sawtooth') return (angle % (Math.PI * 2)) / Math.PI - 1.0; // のこぎり波
-        return 0;
-    }
-
-    function draw() {
+    // メインの描画・計算処理
+    function update() {
         const width = canvas.width;
         const height = canvas.height;
         const centerY = height / 2;
-        const amplitude = height * 0.38;
+        const amplitude = height * 0.4;
 
         ctx.clearRect(0, 0, width, height);
 
-        // サイバー風背景グリッド
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < width; i += 40) {
-            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke();
-        }
-        for (let j = 0; j < height; j += 40) {
-            ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(width, j); ctx.stroke();
-        }
-        ctx.strokeStyle = '#475569';
+        // 基本の横線
+        ctx.strokeStyle = '#334155';
         ctx.beginPath(); ctx.moveTo(0, centerY); ctx.lineTo(width, centerY); ctx.stroke();
 
         // パラメータ取得
-        const sCount = parseInt(samplingSlider.value);
-        const qBit = parseInt(quantizationSlider.value);
-        const qLevels = Math.pow(2, qBit);
-        const wType = waveTypeSelect.value;
+        const fs = parseInt(sliderSampling.value); // サンプリング周波数
+        const bit = parseInt(sliderQuantization.value); // ビット数
+        const levels = Math.pow(2, bit); // 段階数
 
-        // UI文字更新
-        samplingVal.innerText = sCount + " Hz (相当)";
-        quantizationBit.innerText = qBit + " bit";
-        statusSamples.innerText = sCount + " 点 / 周期";
-        statusLevels.innerText = qLevels + " 段階 (2の " + qBit + " 乗)";
+        // 画面の文字更新
+        valSampling.innerText = fs + " Hz";
+        valQuantization.innerText = bit + " bit";
+        valLevels.innerText = levels;
 
-        // 1. アナログ波形の描画（ライトブルー）
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 3;
-        ctx.shadowBlur = 0;
+        // --- 🌟 データ量の計算 🌟 ---
+        const totalBits = fs * bit; // 1秒間のビット数
+        calcResult.innerText = totalBits.toLocaleString() + " bit (" + (totalBits / 8).toFixed(1) + " Byte)";
+        calcFormula.innerText = `【計算式】 ${fs} Hz (標本化) × ${bit} bit (量子化) = ${totalBits.toLocaleString()} bit`;
+
+        // 1. 元のアナログ波形（青い滑らかな線：※ここでは変化が分かりやすいのこぎり波ベース）
+        ctx.strokeStyle = varColor('--blue-analog');
+        ctx.lineWidth = 2;
         ctx.beginPath();
         for (let x = 0; x < width; x++) {
             const angle = (x / width) * Math.PI * 2 * 2; // 2周期分
-            const y = centerY + getWaveValue(angle, wType) * amplitude;
+            const rawVal = (angle % (Math.PI * 2)) / Math.PI - 1.0; // のこぎり波
+            const y = centerY + rawVal * amplitude;
             if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
         ctx.stroke();
 
-        // 2. デジタル波形＆符号化の計算（ピンク）
-        ctx.strokeStyle = '#f43f5e';
-        ctx.fillStyle = '#f43f5e';
-        ctx.lineWidth = 2;
-        
-        const stepX = width / sCount;
-        let lastY = centerY;
-        let binaryList = [];
+        // 2. デジタル波形の計算と描画（赤い階段線）
+        ctx.strokeStyle = varColor('--pink-digital');
+        ctx.fillStyle = varColor('--pink-digital');
+        ctx.lineWidth = 3;
 
-        for (let i = 0; i <= sCount; i++) {
+        const stepX = width / fs;
+        let lastY = centerY;
+        let binaryArr = [];
+
+        for (let i = 0; i <= fs; i++) {
             const x = i * stepX;
             const angle = (x / width) * Math.PI * 2 * 2;
-            const analogVal = getWaveValue(angle, wType);
+            const rawVal = (angle % (Math.PI * 2)) / Math.PI - 1.0;
 
-            // 量子化計算
-            const levelIndex = Math.round((analogVal + 1) / 2 * (qLevels - 1));
-            const quantizedNormalized = levelIndex / (qLevels - 1);
-            const digitalY = centerY + (quantizedNormalized * 2 - 1) * amplitude;
+            // 量子化の段階（0 ～ levels-1）
+            const levelIndex = Math.round((rawVal + 1) / 2 * (levels - 1));
+            const digitalY = centerY + ((levelIndex / (levels - 1)) * 2 - 1) * amplitude;
 
-            // 符号化（上位いくつかのサンプルを2進数にする）
-            if (i < sCount && i < 12) {
-                binaryList.push(toBinary(levelIndex, qBit));
+            // 最初の10点分だけ符号化の2進数を配列に貯める
+            if (i < fs && i < 10) {
+                binaryArr.push(numToBin(levelIndex, bit));
             }
 
             if (i === 0) {
                 ctx.moveTo(x, digitalY);
             } else {
-                ctx.lineTo(x, lastY);
-                ctx.lineTo(x, digitalY);
+                ctx.lineTo(x, lastY); // 階段状にするための横線
+                ctx.lineTo(x, digitalY); // 縦線
             }
-            
-            if(i < sCount) {
-                ctx.beginPath();
-                ctx.arc(x, digitalY, 4, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.moveTo(x, digitalY);
+
+            // サンプリングポイントの点
+            if (i < fs) {
+                ctx.beginPath(); ctx.arc(x, digitalY, 4, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(x, digitalY);
             }
             lastY = digitalY;
         }
         ctx.stroke();
 
-        // 符号化テキストエリアの更新
-        binaryDisplay.innerText = binaryList.join(" | ") + (sCount > 12 ? " ...以下略" : "");
+        // 符号化テキスト更新
+        binaryOutput.innerText = binaryArr.join(" | ") + " ...";
     }
 
-    // イベントリスナー
-    samplingSlider.addEventListener('input', draw);
-    quantizationSlider.addEventListener('input', draw);
-    waveTypeSelect.addEventListener('change', draw);
+    // CSS変数からカラーを取得する補助関数
+    function varColor(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
 
-    // 音声処理
+    // イベント
+    sliderSampling.addEventListener('input', update);
+    sliderQuantization.addEventListener('input', update);
+
+    // 音声処理（シンプル化）
     function toggleAudio() {
         if (isPlaying) {
-            if (scriptProcessor) { scriptProcessor.disconnect(); }
-            if (audioCtx) { audioCtx.close(); audioCtx = null; }
-            playBtn.innerText = "音を再生する";
-            playBtn.classList.remove('playing');
+            if (scriptProcessor) scriptProcessor.disconnect();
+            if (audioCtx) audioCtx.close();
+            audioCtx = null;
+            btnPlay.innerText = "実際の音を聴いてみる";
+            btnPlay.classList.remove('playing');
             isPlaying = false;
         } else {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const bufferSize = 4096;
-            scriptProcessor = audioCtx.createScriptProcessor(bufferSize, 0, 1);
+            scriptProcessor = audioCtx.createScriptProcessor(4096, 0, 1);
             
             let phase = 0;
-            const baseFreq = 180; // 少し低めの、響きやすいベース音の高さ
+            const baseFreq = 160; // 聴き取りやすい低音
 
             scriptProcessor.onaudioprocess = function(e) {
                 const outputBuffer = e.outputBuffer.getChannelData(0);
-                const sCount = parseInt(samplingSlider.value);
-                const qBit = parseInt(quantizationSlider.value);
-                const qLevels = Math.pow(2, qBit);
-                const wType = waveTypeSelect.value;
+                const fs = parseInt(sliderSampling.value);
+                const bit = parseInt(sliderQuantization.value);
+                const levels = Math.pow(2, bit);
                 
-                const targetSampleRate = baseFreq * sCount; 
+                const targetSampleRate = baseFreq * fs; 
 
-                for (let i = 0; i < bufferSize; i++) {
-                    // 選択された音色でアナログ波形を作る
-                    let analogValue = 0;
-                    if (wType === 'sine') analogValue = Math.sin(phase);
-                    else if (wType === 'square') analogValue = Math.sin(phase) >= 0 ? 0.4 : -0.4;
-                    else if (wType === 'sawtooth') analogValue = (phase / Math.PI) - 1.0;
+                for (let i = 0; i < 4096; i++) {
+                    const rawVal = (phase / Math.PI) - 1.0; // のこぎり波
+                    const levelIndex = Math.round((rawVal + 1) / 2 * (levels - 1));
+                    const quantizedValue = (levelIndex / (levels - 1)) * 2 - 1;
 
-                    // 擬似サンプリング＆量子化
-                    const stepSrc = audioCtx.sampleRate / targetSampleRate;
-                    const quantizedValue = Math.round((analogValue + 1) / 2 * (qLevels - 1)) / (qLevels - 1) * 2 - 1;
-
-                    outputBuffer[i] = quantizedValue;
+                    outputBuffer[i] = quantizedValue * 0.4; // 音量調節
                     
-                    // 位相をループ
                     phase += (2 * Math.PI * baseFreq) / audioCtx.sampleRate;
                     if (phase > 2 * Math.PI) phase -= 2 * Math.PI;
                 }
             };
 
             scriptProcessor.connect(audioCtx.destination);
-            playBtn.innerText = "音を停止する";
-            playBtn.classList.add('playing');
+            btnPlay.innerText = "音を停止する";
+            btnPlay.classList.add('playing');
             isPlaying = true;
         }
     }
 
-    playBtn.addEventListener('click', toggleAudio);
-    draw(); // 初回描画
+    btnPlay.addEventListener('click', toggleAudio);
+    
+    // 初期起動
+    update();
 </script>
 
 </body>
